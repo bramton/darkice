@@ -285,8 +285,37 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @return true if encoding has started, false otherwise.
          *  @exception Exception
          */
+        inline virtual bool
+        start ( void )                      
+        {
+            return open();
+        }
+
+        /**
+         *  Stop encoding. Stops the encoding running in the background.
+         *
+         *  @exception Exception
+         */
+        inline virtual void
+        stop ( void )                       
+        {
+            return close();
+        }
+
+        /**
+         *  Open an encoding session.
+         *
+         *  @return true if opening was successfull, false otherwise.
+         *  @exception Exception
+         */
         virtual bool
-        start ( void )                               ;
+        open ( void )                               ;
+
+        /**
+         *  Check if the encoding session is open.
+         *
+         *  @return true if the encoding session is open, false otherwise.
+         */
 
         /**
          *  Check if the encoding session is open.
@@ -335,12 +364,21 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
                        unsigned int    len )        ;
 
         /**
-         *  Stop the encoding session.
+         *  Flush all data that was written to the encoder to the underlying
+         *  connection.
          *
          *  @exception Exception
          */
         virtual void
-        stop ( void )                              ;
+        flush ( void )                              ;
+
+        /**
+         *  Close the encoding session.
+         *
+         *  @exception Exception
+         */
+        virtual void
+        close ( void )                              ;
 };
 
 

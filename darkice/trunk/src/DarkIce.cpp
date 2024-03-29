@@ -96,6 +96,10 @@
 #include "OpusLibEncoder.h"
 #endif
 
+#ifdef HAVE_FLAC_LIB
+#include "FlacLibEncoder.h"
+#endif
+
 #ifdef HAVE_FAAC_LIB
 #include "FaacEncoder.h"
 #endif
@@ -479,6 +483,8 @@ DarkIce :: configIceCast2 (  const Config      & config,
             format = IceCast2::oggVorbis;
         } else if ( Util::strEq( str, "opus") ) {
             format = IceCast2::oggOpus;
+        } else if ( Util::strEq( str, "flac") ) {
+            format = IceCast2::oggFlac;
         } else if ( Util::strEq( str, "mp3") ) {
             format = IceCast2::mp3;
         } else if ( Util::strEq( str, "mp2") ) {
@@ -670,6 +676,26 @@ DarkIce :: configIceCast2 (  const Config      & config,
                                                maxBitrate);
 
 #endif // HAVE_OPUS_LIB
+                break;
+
+            case IceCast2::oggFlac:
+#ifndef HAVE_FLAC_LIB
+                throw Exception( __FILE__, __LINE__,
+                                "DarkIce not compiled with Ogg FLAC support, "
+                                "thus can't Ogg FLAC stream: ",
+                                stream);
+#else
+
+                audioOuts[u].encoder = new FlacLibEncoder(
+                                               audioOut,
+                                               dsp.get(),
+                                               bitrateMode,
+                                               bitrate,
+                                               quality,
+                                               sampleRate,
+                                               dsp->getChannel());
+
+#endif // HAVE_FLAC_LIB
                 break;
 
             case IceCast2::mp2:

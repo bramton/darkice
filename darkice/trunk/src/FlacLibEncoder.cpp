@@ -70,7 +70,7 @@ FlacLibEncoder :: init ( )
  *  Start an encoding session
  *----------------------------------------------------------------------------*/
 bool
-FlacLibEncoder :: start ( void )
+FlacLibEncoder :: open ( void )
                                                             
 {
     if ( isOpen() ) {
@@ -133,7 +133,7 @@ FlacLibEncoder :: write ( const void    * buf,
  *  Close the encoding session
  *----------------------------------------------------------------------------*/
 void
-FlacLibEncoder :: stop ( void )                    
+FlacLibEncoder :: close ( void )                    
 {
     if ( isOpen() ) {
 
