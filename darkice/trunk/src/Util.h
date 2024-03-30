@@ -241,11 +241,12 @@ class Util
          *  @param outBuffer the output buffer, must be big enough
          *  @param isBigEndian true if the input is big endian, false otherwise
          */
-        static void
+
+        template <typename T=int16_t> static void
         conv (  unsigned int        bitsPerSample,
                 unsigned char     * pcmBuffer,
                 unsigned int        lenPcmBuffer,
-                short int         * outBuffer,
+                T                 * outBuffer,
                 bool                isBigEndian = true )    ;
 
 

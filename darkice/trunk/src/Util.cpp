@@ -341,12 +341,12 @@ Util :: fileAddDate ( const char * str,
  *  Convert an unsigned char buffer holding 8 or 16 bit PCM values with
  *  channels interleaved to a short int buffer, still with channels interleaved
  *----------------------------------------------------------------------------*/
-void
+template <typename T> void
 Util :: conv (  unsigned int        bitsPerSample,
                 unsigned char     * pcmBuffer,
                 unsigned int        lenPcmBuffer,
-                short int         * outBuffer,
-                bool                isBigEndian )           
+                T                 * outBuffer,
+                bool                isBigEndian )
 {
     if ( bitsPerSample == 8 ) {
         unsigned int    i, j;
@@ -386,6 +386,8 @@ Util :: conv (  unsigned int        bitsPerSample,
                          bitsPerSample);
     }
 }
+
+template void Util::conv<int16_t>(unsigned int, unsigned char*, unsigned int, int16_t*, bool);
 
 
 /*------------------------------------------------------------------------------
