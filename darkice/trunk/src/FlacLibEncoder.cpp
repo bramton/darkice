@@ -76,6 +76,7 @@ FlacLibEncoder :: open ( void )
     if ( isOpen() ) {
         close();
     }
+		std::cout << "Halloooo from FLAC encoder" << std::endl;
 
     // open the underlying sink
     if ( !getSink()->open() ) {
@@ -103,10 +104,12 @@ FlacLibEncoder :: open ( void )
 FLAC__StreamEncoderWriteStatus
 FlacLibEncoder :: encoder_cb (const FLAC__StreamEncoder *encoder,
                               const FLAC__byte buffer[],
-                              size_t bytes,
+                              size_t len,
                               uint32_t samples, uint32_t current_frame,
-                              void *client_data ) {
-    //getSink()->write(data, len);
+                              void *flacencoder ) {
+		FlacLibEncoder *fle = (FlacLibEncoder*)flacencoder;
+    unsigned int written = fle->getSink()->write(buffer, len);
+		std::cout << "Hello from CB:" << written << std::endl;
     return FLAC__STREAM_ENCODER_WRITE_STATUS_OK;
 }
 
@@ -115,25 +118,34 @@ FlacLibEncoder :: encoder_cb (const FLAC__StreamEncoder *encoder,
  *----------------------------------------------------------------------------*/
 unsigned int
 FlacLibEncoder :: write ( const void    * buf,
-                          unsigned int    len )             
+                          unsigned int    len )
 {
     if ( !isOpen() || len == 0 ) {
         return 0;
     }
 
-    unsigned int    channels      = getInChannel();
     unsigned int    bitsPerSample = getInBitsPerSample();
-    unsigned int    sampleSize = (bitsPerSample / 8) * channels;
+    unsigned char *b = (unsigned char*)buf;
+    const uint32_t samples = len>>1;
+    FLAC__int32 *buffer = new FLAC__int32[samples];
+    Util::conv<FLAC__int32>(bitsPerSample, b, len, buffer, isInBigEndian());
+    if (!FLAC__stream_encoder_process_interleaved(se, buffer, samples)) {
+        const char *err = FLAC__stream_encoder_get_resolved_state_string(se);
+				printf("Error: %s", err);
+    }
 
-    int totalProcessed = 0;
-    return totalProcessed;
+    //std::cout << "Write called: " << len << std::endl;
+
+		delete[] buffer;
+    return len;
 }
 
 /*------------------------------------------------------------------------------
  *  Close the encoding session
  *----------------------------------------------------------------------------*/
 void
-FlacLibEncoder :: close ( void )                    
+FlacLibEncoder :: close ( void )
+
 {
     if ( isOpen() ) {
 
@@ -146,6 +158,20 @@ FlacLibEncoder :: close ( void )
 
         getSink()->close();
     }
+}
+
+/*------------------------------------------------------------------------------
+ *  Flush the data from the encoder
+ *----------------------------------------------------------------------------*/
+void
+FlacLibEncoder :: flush ( void )
+
+{
+    if ( !isOpen() ) {
+        return;
+    }
+
+    getSink()->flush();
 }
 
 #endif // HAVE_FLAC_LIB
