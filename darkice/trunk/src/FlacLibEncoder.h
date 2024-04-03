@@ -62,40 +62,37 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
         /**
          * Stream encoder instance
          */
-        FLAC__StreamEncoder                            * se;
+        FLAC__StreamEncoder           * se;
 
         /**
-         *  Resample ratio
+         * Number of bytes written to the sink
          */
-        double                          resampleRatio;
+        unsigned int                    written;
 
         /**
-         *  sample rate converter object for possible resampling
+         * Compression level of the encoder
          */
-#ifdef HAVE_SRC_LIB
-        SRC_STATE                     * converter;
-        SRC_DATA                      converterData;
-#else
-        aflibConverter                * converter;
-#endif
+        unsigned int                    compression;
 
         /**
          *  Initialize the object.
          *
-         *  @param the maximum bit rate
+         *  @param the compression level
          *  @exception Exception
          */
         void
-        init ( );
+        init ( unsigned int );
 
         /**
-         * Encoder write callback
-         *
-         *  @param the maximum bit rate
-         *  @exception Exception
+         * Encoder write callback function
          */
         static FLAC__StreamEncoderWriteStatus
-        encoder_cb (const FLAC__StreamEncoder *encoder, const FLAC__byte buffer[], size_t bytes, uint32_t samples, uint32_t current_frame, void *client_data );
+        encoder_cb (const FLAC__StreamEncoder *encoder,
+                    const FLAC__byte buffer[],
+                    size_t bytes,
+                    uint32_t samples,
+                    uint32_t current_frame,
+                    void *client_data );
 
         /**
          *  De-initialize the object.
@@ -103,17 +100,8 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         inline void
-        strip ( void )                                  
+        strip ( void )
         {
-            if ( converter ) {
-#ifdef HAVE_SRC_LIB
-                delete [] converterData.data_in;
-                delete [] converterData.data_out;
-                src_delete (converter);
-#else
-                delete converter;
-#endif
-            }
         }
 
 
@@ -125,7 +113,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         inline
-        FlacLibEncoder ( void )                         
+        FlacLibEncoder ( void )
         {
             throw Exception( __FILE__, __LINE__);
         }
@@ -148,6 +136,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *                       If 0, inSampleRate is used.
          *  @param outChannel number of channels of the output.
          *                    If 0, inChannel is used.
+         *  @param compression compression level
          *  @exception Exception
          */
         inline
@@ -160,8 +149,8 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
                             unsigned int    outBitrate,
                             double          outQuality,
                             unsigned int    outSampleRate = 0,
-                            unsigned int    outChannel    = 0 )
-                                                        
+                            unsigned int    outChannel    = 0,
+                            unsigned int    compression = 0 )
 
                     : AudioEncoder ( sink,
                                      inSampleRate,
@@ -174,7 +163,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
                                      outSampleRate,
                                      outChannel )
         {
-            init( );
+            init( compression );
         }
 
         /**
@@ -191,6 +180,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *                       0 if not used.
          *  @param outChannel number of channels of the output.
          *                    If 0, input channel is used.
+         *  @param compression compression level
          *  @exception Exception
          */
         inline
@@ -200,8 +190,8 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
                             unsigned int            outBitrate,
                             double                  outQuality,
                             unsigned int            outSampleRate = 0,
-                            unsigned int            outChannel    = 0 )
-                                                            
+                            unsigned int            outChannel    = 0,
+                            unsigned int            compression = 0)
 
                     : AudioEncoder ( sink,
                                      as,
@@ -211,7 +201,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
                                      outSampleRate,
                                      outChannel )
         {
-            init( );
+            init( compression );
         }
 
         /**
@@ -221,13 +211,13 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          */
         inline
         FlacLibEncoder (  const FlacLibEncoder &    encoder )
-                                                            
+
                     : AudioEncoder( encoder )
         {
             if( encoder.isOpen() ) {
                 throw Exception(__FILE__, __LINE__, "don't copy open encoders");
             }
-            init( );
+            init( compression );
         }
 
         /**
@@ -236,7 +226,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         inline virtual
-        ~FlacLibEncoder ( void )                         
+        ~FlacLibEncoder ( void )
         {
             if ( isOpen() ) {
                 stop();
@@ -252,7 +242,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         inline virtual FlacLibEncoder &
-        operator= ( const FlacLibEncoder &   encoder )   
+        operator= ( const FlacLibEncoder &   encoder )
         {
             if( encoder.isOpen() ) {
                 throw Exception(__FILE__, __LINE__, "don't copy open encoders");
@@ -261,7 +251,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
             if ( this != &encoder ) {
                 strip();
                 AudioEncoder::operator=( encoder);
-                init( );
+                init( compression );
             }
 
             return *this;
@@ -286,7 +276,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         inline virtual bool
-        start ( void )                      
+        start ( void )
         {
             return open();
         }
@@ -297,7 +287,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         inline virtual void
-        stop ( void )                       
+        stop ( void )
         {
             return close();
         }
@@ -339,7 +329,7 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          */
         inline virtual bool
         canWrite (     unsigned int    sec,
-                       unsigned int    usec )       
+                       unsigned int    usec )
         {
             if ( !isOpen() ) {
                 return false;
@@ -360,8 +350,8 @@ class FlacLibEncoder : public AudioEncoder, public virtual Reporter
          *  @exception Exception
          */
         virtual unsigned int
-        write (        const void    * buf,
-                       unsigned int    len )        ;
+        write (        const void   * buf,
+                       unsigned int   len )        ;
 
         /**
          *  Flush all data that was written to the encoder to the underlying

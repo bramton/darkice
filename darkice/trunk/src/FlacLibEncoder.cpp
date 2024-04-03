@@ -11,13 +11,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <cstring>
+#include <cstdlib>
+
 #include "Exception.h"
 #include "Util.h"
 #include "FlacLibEncoder.h"
 #include "CastSink.h"
-#include <cstring>
-#include <cstdlib>
-
 
 /* ===================================================  local data structures */
 
@@ -39,27 +39,33 @@ static const char fileid[] = "$Id$";
  *  Initialize the encoder
  *----------------------------------------------------------------------------*/
 void
-FlacLibEncoder :: init ( )
-                                                            
+FlacLibEncoder :: init ( unsigned int compression )
+
 {
 
-    if ( getInBitsPerSample() != 16 && getInBitsPerSample() != 8 ) {
+    this->compression = compression;
+
+    if ( getInBitsPerSample() != 16 ) {
         throw Exception( __FILE__, __LINE__,
-                         "specified bits per sample not supported",
+                         "only 16 bits per sample supported at the moment",
                          getInBitsPerSample() );
     }
 
-    if ( getInChannel() != 1 && getInChannel() != 2 ) {
+    if ( getInChannel() != 2 ) {
         throw Exception( __FILE__, __LINE__,
-                         "unsupported number of channels for the encoder",
+                         "only two channels supported at the moment",
                          getInChannel() );
     }
 
-    if ( getOutSampleRate() == getInSampleRate() ) {
-        converter     = 0;
-    } else {
+    if ( getOutSampleRate() != getInSampleRate() ) {
         throw Exception( __FILE__, __LINE__,
-                         "Resampling not supported at the moment.");
+                         "resampling not supported at the moment");
+    }
+
+    if ( compression < 0 || compression > 8 ) {
+        throw Exception( __FILE__, __LINE__,
+                         "unsupported compression level for the encoder",
+                         compression );
     }
 
     encoderOpen = false;
@@ -71,12 +77,11 @@ FlacLibEncoder :: init ( )
  *----------------------------------------------------------------------------*/
 bool
 FlacLibEncoder :: open ( void )
-                                                            
+
 {
     if ( isOpen() ) {
         close();
     }
-		std::cout << "Halloooo from FLAC encoder" << std::endl;
 
     // open the underlying sink
     if ( !getSink()->open() ) {
@@ -93,23 +98,27 @@ FlacLibEncoder :: open ( void )
     FLAC__stream_encoder_set_ogg_serial_number(se, rand());
     FLAC__stream_encoder_set_bits_per_sample(se, getInBitsPerSample());
     FLAC__stream_encoder_set_sample_rate(se, getInSampleRate());
-    FLAC__stream_encoder_set_compression_level(se, getOutQuality());
-    FLAC__stream_encoder_init_ogg_stream(se, NULL, FlacLibEncoder::encoder_cb, NULL, NULL, NULL, this);
-    
+    FLAC__stream_encoder_set_compression_level(se, this->compression);
+    FLAC__stream_encoder_init_ogg_stream(se, NULL, FlacLibEncoder::encoder_cb,
+                                         NULL, NULL, NULL, this);
+
     encoderOpen = true;
 
     return true;
 }
 
+/*------------------------------------------------------------------------------
+ * Callback function for the FLAC encoder
+ *----------------------------------------------------------------------------*/
 FLAC__StreamEncoderWriteStatus
 FlacLibEncoder :: encoder_cb (const FLAC__StreamEncoder *encoder,
                               const FLAC__byte buffer[],
                               size_t len,
-                              uint32_t samples, uint32_t current_frame,
+                              uint32_t samples,
+                              uint32_t current_frame,
                               void *flacencoder ) {
-		FlacLibEncoder *fle = (FlacLibEncoder*)flacencoder;
-    unsigned int written = fle->getSink()->write(buffer, len);
-		std::cout << "Hello from CB:" << written << std::endl;
+    FlacLibEncoder *fle = (FlacLibEncoder*)flacencoder;
+    fle->written += fle->getSink()->write(buffer, len);
     return FLAC__STREAM_ENCODER_WRITE_STATUS_OK;
 }
 
@@ -117,27 +126,33 @@ FlacLibEncoder :: encoder_cb (const FLAC__StreamEncoder *encoder,
  *  Write data to the encoder
  *----------------------------------------------------------------------------*/
 unsigned int
-FlacLibEncoder :: write ( const void    * buf,
-                          unsigned int    len )
+FlacLibEncoder :: write ( const void   * buf,
+                          unsigned int   len )
 {
     if ( !isOpen() || len == 0 ) {
         return 0;
     }
+    this->written = 0;
 
-    unsigned int    bitsPerSample = getInBitsPerSample();
+    unsigned int   bitsPerSample = getInBitsPerSample();
     unsigned char *b = (unsigned char*)buf;
     const uint32_t samples = len>>1;
+    const uint32_t samples_per_channel = samples/getInChannel();
     FLAC__int32 *buffer = new FLAC__int32[samples];
+
     Util::conv<FLAC__int32>(bitsPerSample, b, len, buffer, isInBigEndian());
-    if (!FLAC__stream_encoder_process_interleaved(se, buffer, samples)) {
+
+    if (!FLAC__stream_encoder_process_interleaved(se, buffer,
+                                                  samples_per_channel)) {
         const char *err = FLAC__stream_encoder_get_resolved_state_string(se);
-				printf("Error: %s", err);
+        size_t needed = snprintf(NULL, 0, "FLAC encoder error: %s", err) + 1;
+        char *msg = (char *)malloc(needed);
+        snprintf(msg, needed, "FLAC encoder error: %s", err);
+        throw Exception( __FILE__, __LINE__, msg);
     }
 
-    //std::cout << "Write called: " << len << std::endl;
-
-		delete[] buffer;
-    return len;
+    delete[] buffer;
+    return this->written;
 }
 
 /*------------------------------------------------------------------------------
