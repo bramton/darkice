@@ -471,6 +471,7 @@ DarkIce :: configIceCast2 (  const Config      & config,
         bool                        isPublic        = false;
         int                         lowpass         = 0;
         int                         highpass        = 0;
+        unsigned int                compression     = 0;
         const char                * localDumpName   = 0;
         FileSink                  * localDumpFile   = 0;
         bool                        fileAddDate     = false;
@@ -559,6 +560,8 @@ DarkIce :: configIceCast2 (  const Config      & config,
         lowpass     = str ? Util::strToL( str) : 0;
         str         = cs->get( "highpass");
         highpass    = str ? Util::strToL( str) : 0;
+        str         = cs->get( "compression");
+        compression = str ? Util::strToL( str) : 5;
         str         = cs->get( "fileAddDate");
         fileAddDate = str ? (Util::strEq( str, "yes") ? true : false) : false;
         fileDateFormat = cs->get( "fileDateFormat");
@@ -693,7 +696,8 @@ DarkIce :: configIceCast2 (  const Config      & config,
                                                bitrate,
                                                quality,
                                                sampleRate,
-                                               dsp->getChannel());
+                                               dsp->getChannel(),
+                                               compression);
 
 #endif // HAVE_FLAC_LIB
                 break;
